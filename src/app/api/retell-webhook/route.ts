@@ -1,68 +1,54 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { RetellClient } from 'retell-sdk';
+import { type Response } from 'express';
+import {
+  AudioEncoding,
+  LlmRequest,
+  LlmResponse,
+} from 'retell-sdk/models/components';
 
-// Ce webhook est appelé par Retell AI au début de chaque appel.
-// Il doit renvoyer les "llm_context" qui contiennent toutes les informations
-// personnalisées pour la pizzeria concernée.
+export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+const retellClient = new RetellClient({
+  apiKey: process.env.RETELL_API_KEY,
+});
+
+export async function POST(req: Request) {
   try {
-    // L'ID de l'agent Retell est envoyé dans le corps de la requête
-    const { agent_id } = await request.json();
+    const llmRequest: LlmRequest = await req.json();
 
-    if (!agent_id) {
-      return NextResponse.json({ error: 'Agent ID manquant' }, { status: 400 });
+    // The 'begin' interaction type is sent when the call first starts.
+    if (llmRequest.interaction_type === 'begin') {
+      const llmResponse: LlmResponse = {
+        response_id: 0,
+        content: "Bonjour, bienvenue chez PizzaAI. Comment puis-je vous aider ?",
+        content_complete: true,
+        no_interruption_allowed: false,
+      };
+      return new Response(JSON.stringify(llmResponse), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // 1. Trouver la pizzeria associée à cet agent Retell
-    // (Note: Vous devrez stocker l'agent_id dans votre table 'pizzerias' lors de sa création)
-    const { data: pizzeria, error: pizzeriaError } = await supabase
-      .from('pizzerias')
-      .select('*')
-      .eq('retell_agent_id', agent_id) // Vous devrez ajouter ce champ à votre table
-      .single();
-
-    if (pizzeriaError || !pizzeria) {
-      throw new Error(`Pizzeria non trouvée pour l'agent ${agent_id}`);
-    }
-
-    // 2. Récupérer le menu structuré de cette pizzeria
-    const { data: menuItems, error: menuError } = await supabase
-      .from('menu_items')
-      .select('*')
-      .eq('pizzeria_id', pizzeria.id)
-      .eq('is_available', true);
-
-    if (menuError) {
-      throw new Error(`Erreur lors de la récupération du menu pour ${pizzeria.name}`);
-    }
-
-    // 3. Formater les données pour Retell AI
-    // C'est ici que vous construisez le contexte que l'IA utilisera.
-    // Soyez très descriptif pour que l'IA comprenne bien.
-    const llmContext = {
-      pizzeria_name: pizzeria.name,
-      pizzeria_address: pizzeria.address,
-      pizzeria_phone: pizzeria.contact_phone,
-      // Exemple de variable personnalisée
-      special_offer: "Offre du jour : une boisson offerte pour toute pizza achetée.",
-      delivery_rules: `Nous livrons dans un rayon de ${pizzeria.delivery_radius_km} km.`,
-      
-      // Le menu doit être dans un format simple à lire pour l'IA
-      menu: `
-        Voici le menu disponible aujourd'hui chez ${pizzeria.name}:
-        ${menuItems.map(item => 
-          `- ${item.category} - ${item.name} (${item.description || ''}) : ${item.price}€ ${item.size ? `(taille ${item.size})` : ''}`
-        ).join('\n')}
-      `,
+    // For now, for any other interaction, just say goodbye.
+    // We will implement the full order logic later.
+    const llmResponse: LlmResponse = {
+      response_id: llmRequest.response_id,
+      content: "Merci, au revoir !",
+      content_complete: true,
+      no_interruption_allowed: false,
+      end_call: true,
     };
+    return new Response(JSON.stringify(llmResponse), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-    // 4. Renvoyer ce contexte à Retell AI
-    return NextResponse.json(llmContext);
-
-  } catch (error: unknown) {
-    console.error("Erreur dans le webhook Retell:", error);
-    const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  } catch (error) {
+    console.error('Error in Retell webhook:', error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
