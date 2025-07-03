@@ -40,9 +40,10 @@ export default function SignUpPage() {
       alert('Inscription réussie ! Vous allez être redirigé vers le dashboard.');
       router.push('/dashboard');
 
-    } catch (err: any) {
-      setError(err.message);
-      console.error("Error during sign up:", err);
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message);
+      console.error("Error during sign up:", error);
     }
   };
 

@@ -46,8 +46,9 @@ export default function UploadMenuPage() {
       setMessage('Menu uploadé et en cours de traitement ! Vous pouvez voir le résultat dans votre dashboard.');
       console.log('Function response:', data);
 
-    } catch (err: any) {
-      setMessage(`Erreur : ${err.message}`);
+    } catch (err) {
+      const error = err as Error;
+      setMessage(`Erreur : ${error.message}`);
       console.error(err);
     } finally {
       setUploading(false);
