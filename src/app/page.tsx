@@ -1,4 +1,5 @@
 import { ArrowRight, Bot, Pizza, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -37,9 +38,11 @@ export default function HomePage() {
             Concentrez-vous sur la préparation de pizzas exceptionnelles. Notre assistant IA gère les appels, prend les commandes avec précision et améliore l&apos;expérience client.
           </p>
           <div className="flex justify-center gap-4">
-            <button className="bg-primary text-primary-foreground font-semibold py-3 px-8 rounded-md hover:bg-primary/90 transition-colors">
-              Commencer
-            </button>
+            <Link href="/auth/signup">
+              <button className="bg-primary text-primary-foreground font-semibold py-3 px-8 rounded-md hover:bg-primary/90 transition-colors">
+                Commencer
+              </button>
+            </Link>
             <button className="bg-muted text-muted-foreground font-semibold py-3 px-8 rounded-md hover:bg-muted/90 transition-colors">
               Voir les tarifs
             </button>
