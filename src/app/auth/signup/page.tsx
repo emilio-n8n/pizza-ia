@@ -1,4 +1,4 @@
-"use client";
+use client";
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -11,11 +11,13 @@ export default function SignUpPage() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsLoading(true);
 
     try {
       const { data: { user }, error: authError } = await supabase.auth.signUp({
@@ -44,6 +46,8 @@ export default function SignUpPage() {
       const error = err as Error;
       setError(error.message);
       console.error("Error during sign up:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -62,6 +66,7 @@ export default function SignUpPage() {
               onChange={(e) => setPizzeriaName(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg"
               required
+              disabled={isLoading}
             />
           </div>
           <div className="mb-4">
@@ -73,6 +78,7 @@ export default function SignUpPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg"
               required
+              disabled={isLoading}
             />
           </div>
           <div className="mb-4">
@@ -84,6 +90,7 @@ export default function SignUpPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg"
               required
+              disabled={isLoading}
             />
           </div>
            <div className="mb-4">
@@ -94,6 +101,7 @@ export default function SignUpPage() {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg"
+              disabled={isLoading}
             />
           </div>
            <div className="mb-4">
@@ -104,10 +112,15 @@ export default function SignUpPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg"
+              disabled={isLoading}
             />
           </div>
-          <button type="submit" className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700">
-            S&apos;inscrire
+          <button 
+            type="submit" 
+            className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Création en cours...' : 'S\'inscrire'}
           </button>
         </form>
       </div>
