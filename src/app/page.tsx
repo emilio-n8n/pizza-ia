@@ -1,85 +1,83 @@
-import Image from 'next/image';
+import { ArrowRight, Bot, Pizza, Zap } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <div className="bg-light-white text-custom-grey">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-light-white/80 backdrop-blur-md shadow-sm transition-all duration-300">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="font-lilita text-3xl bg-accent-yellow text-light-white px-3 py-1 rounded-md shadow-sm -rotate-2">
-            <span className="text-white" style={{textShadow: '2px 2px #231F20'}}>PizzaCall</span>
+      <header className="sticky top-0 z-50 w-full border-b border-muted bg-background/95 backdrop-blur-sm">
+        <div className="container mx-auto px-6 h-16 flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <Bot size={28} className="text-primary" />
+            <span className="font-bold text-xl">PizzaAI</span>
           </div>
-          <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="group text-custom-grey hover:text-accent-red transition-colors duration-300">
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
               Fonctionnalités
-              <span className="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-accent-red"></span>
             </a>
-            <a href="#pricing" className="group text-custom-grey hover:text-accent-red transition-colors duration-300">
+            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
               Tarifs
-              <span className="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-accent-red"></span>
+            </a>
+            <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">
+              Contact
             </a>
           </nav>
-          <button className="bg-accent-red text-white font-bold py-2 px-6 rounded-full hover:bg-red-700 hover:scale-105 transform transition-all duration-300 ease-in-out shadow-lg">
-            Demander une démo
+          <button className="flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-md hover:bg-primary/90 transition-colors text-sm">
+            Demander une démo <ArrowRight size={16} />
           </button>
         </div>
       </header>
 
       {/* Hero Section */}
-      <main className="relative min-h-screen flex items-center justify-center text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-dark-green/80 via-custom-grey/90 to-accent-red/80"></div>
-         <Image
-            src="https://img.freepik.com/free-photo/fresh-pizza-with-salami-vegetables-dark-background_140725-6320.jpg"
-            alt="Pizzeria background"
-            layout="fill"
-            objectFit="cover"
-            className="opacity-30"
-          />
-        <div className="relative z-10 container mx-auto px-6 py-20">
-          <h2 className="text-5xl md:text-7xl font-lilita text-light-white mb-4" style={{textShadow: '3px 3px #CD291E'}}>
-            Libérez-vous du téléphone,
-            <br/>
-            <span className="text-accent-yellow">Concentrez-vous sur vos pizzas !</span>
-          </h2>
-          <p className="text-xl text-light-white/90 mb-8 max-w-2xl mx-auto">
-            Notre IA prend les commandes pour vous, 24/7, sans erreur et avec une touche personnelle.
+      <main className="flex-grow">
+        <section className="container mx-auto px-6 py-24 md:py-32 text-center">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6">
+            L&apos;IA qui prend vos commandes de pizza.
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+            Concentrez-vous sur la préparation de pizzas exceptionnelles. Notre assistant IA gère les appels, prend les commandes avec précision et améliore l&apos;expérience client.
           </p>
-          <button className="bg-accent-yellow text-custom-grey font-bold py-4 px-10 rounded-full text-lg hover:bg-yellow-500 transform hover:scale-110 transition-all duration-300 ease-in-out shadow-xl">
-            Commencer l&apos;automatisation
-          </button>
-        </div>
+          <div className="flex justify-center gap-4">
+            <button className="bg-primary text-primary-foreground font-semibold py-3 px-8 rounded-md hover:bg-primary/90 transition-colors">
+              Commencer
+            </button>
+            <button className="bg-muted text-muted-foreground font-semibold py-3 px-8 rounded-md hover:bg-muted/90 transition-colors">
+              Voir les tarifs
+            </button>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section id="features" className="bg-muted/50 py-24">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Une solution complète pour votre pizzeria</h2>
+              <p className="text-md text-muted-foreground mt-3 max-w-xl mx-auto">
+                De la prise de commande à la gestion des menus, tout est automatisé pour vous faire gagner du temps.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                { icon: <Bot size={24} />, title: "Prise de commande 24/7", description: "Ne manquez plus jamais une commande, même en dehors des heures d'ouverture." },
+                { icon: <Zap size={24} />, title: "Zéro erreur", description: "Notre IA confirme chaque détail de la commande pour une précision absolue." },
+                { icon: <Pizza size={24} />, title: "Menu intelligent", description: "Gérez facilement vos pizzas, suppléments et offres spéciales." },
+              ].map((feature, i) => (
+                <div key={i} className="bg-background p-6 rounded-lg border">
+                  <div className="flex items-center justify-center h-12 w-12 bg-primary text-primary-foreground rounded-md mb-4">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* Features Section */}
-      <section id="features" className="bg-light-white py-24">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h3 className="text-4xl font-lilita text-accent-red">Une solution pensée pour les pizzerias</h3>
-            <p className="text-lg text-custom-grey/80 mt-2">Tout ce dont vous avez besoin pour optimiser votre temps.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { title: "Gain de temps massif", description: "Notre IA gère 100% des appels de commande, vous laissant libre de préparer vos délicieuses pizzas." },
-              { title: "Zéro erreur de commande", description: "Fini les erreurs de saisie. Chaque commande est prise avec précision et confirmée au client." },
-              { title: "Personnalisation avancée", description: "Configurez menus, offres, zones de livraison et plus pour une expérience unique." },
-              { title: "Intégration simple", description: "Aucun matériel requis. Notre service s'intègre à votre ligne téléphonique existante." }
-            ].map((feature, i) => (
-              <div key={i} className="feature-card bg-white p-8 rounded-xl shadow-lg text-center border-t-4 border-accent-yellow hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                <h4 className="text-2xl font-lilita text-dark-green mb-3">{feature.title}</h4>
-                <p className="text-custom-grey/90">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer id="contact" className="bg-custom-grey text-light-white py-12">
-        <div className="container mx-auto px-6 text-center">
-          <p>&copy; {new Date().getFullYear()} PizzaCall Automation. Tous droits réservés.</p>
-          <div className="flex justify-center space-x-6 mt-4">
-             {/* Add Lucide Icons here later if needed */}
-          </div>
+      <footer id="contact" className="border-t">
+        <div className="container mx-auto px-6 py-8 text-center text-muted-foreground text-sm">
+          <p>&copy; {new Date().getFullYear()} PizzaAI. Tous droits réservés.</p>
         </div>
       </footer>
     </div>

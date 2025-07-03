@@ -9,14 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        "accent-red": "#CD291E",
-        "accent-yellow": "#FDB912",
-        "light-white": "#FFF9EE",
-        "custom-grey": "#231F20",
-        "dark-green": "#316131",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
       },
       fontFamily: {
-        lilita: ['"Lilita One"', 'sans-serif'],
+        sans: ["var(--font-geist-sans)"],
+        mono: ["var(--font-geist-mono)"],
       },
     },
   },
