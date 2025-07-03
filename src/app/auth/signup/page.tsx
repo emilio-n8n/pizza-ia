@@ -20,14 +20,29 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      const { data: { user }, error: authError } = await supabase.auth.signUp({
+      // Étape 1: Inscription de l'utilisateur
+      const { data: signUpData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (authError) throw authError;
-      if (!user) throw new Error("User not created");
+      if (!signUpData.user) throw new Error("User not created");
 
+      // Étape 2: Mettre à jour manuellement la session
+      // C'est l'étape cruciale qui manquait.
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: signUpData.session.access_token,
+        refresh_token: signUpData.session.refresh_token,
+      });
+
+      if (sessionError) throw sessionError;
+      
+      // Maintenant, la session est active pour les requêtes suivantes.
+      const user = sessionData.user;
+      if (!user) throw new Error("Session not established");
+
+      // Étape 3: Insertion dans la table 'pizzerias'
       const { error: pizzeriaError } = await supabase
         .from('pizzerias')
         .insert({
