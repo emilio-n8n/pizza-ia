@@ -19,11 +19,18 @@ export default function HomePage() {
               Tarifs
             </a>
           </nav>
-          <Link href="/auth/signup">
-            <button className="bg-accent-red text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md">
-              Demander une démo
-            </button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/auth/login">
+              <button className="bg-white text-custom-grey font-bold py-2 px-6 rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-md border border-gray-200">
+                Se connecter
+              </button>
+            </Link>
+            <Link href="/auth/signup">
+              <button className="bg-accent-red text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md">
+                Demander une démo
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 
