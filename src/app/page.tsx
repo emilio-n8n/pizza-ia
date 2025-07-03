@@ -27,7 +27,7 @@ export default function HomePage() {
           Notre IA prend les commandes pour vous, 24/7, sans erreur et avec une touche personnelle.
         </p>
         <button className="bg-red-600 text-white font-bold py-4 px-8 rounded-full text-lg hover:bg-red-700 transition duration-300">
-          Commencer l'automatisation
+          Commencer l&apos;automatisation
         </button>
         <div className="mt-12">
           <Image
@@ -61,7 +61,7 @@ export default function HomePage() {
             </div>
             <div className="feature-card bg-gray-100 p-6 rounded-lg shadow-lg text-center">
               <h4 className="text-xl font-bold mb-2">Intégration simple</h4>
-              <p>Aucun matériel requis. Notre service s'intègre à votre ligne téléphonique existante en quelques clics.</p>
+              <p>Aucun matériel requis. Notre service s&apos;intègre à votre ligne téléphonique existante en quelques clics.</p>
             </div>
           </div>
         </div>

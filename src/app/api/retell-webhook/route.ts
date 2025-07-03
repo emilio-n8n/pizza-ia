@@ -60,8 +60,9 @@ export async function POST(request: Request) {
     // 4. Renvoyer ce contexte à Retell AI
     return NextResponse.json(llmContext);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur dans le webhook Retell:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -59,7 +59,7 @@ export default function UploadMenuPage() {
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center">
         <h2 className="text-2xl font-bold mb-6">Uploadez votre menu</h2>
-        <p className="text-gray-600 mb-6">Prenez une photo claire de votre menu. Notre IA s'occupe du reste.</p>
+        <p className="text-gray-600 mb-6">Prenez une photo claire de votre menu. Notre IA s&apos;occupe du reste.</p>
         <input
           type="file"
           accept="image/*"
