@@ -29,8 +29,14 @@ export default function SignUpPage() {
       if (authError) throw authError;
       if (!signUpData.user) throw new Error("User not created");
 
-      // Étape 2: Mettre à jour manuellement la session
-      // C'est l'étape cruciale qui manquait.
+      // Étape 2: Vérifier si la confirmation par e-mail est requise
+      if (!signUpData.session) {
+        alert("Inscription réussie ! Veuillez consulter vos e-mails pour confirmer votre compte.");
+        router.push('/'); // Rediriger vers l'accueil
+        return; // Arrêter le processus ici
+      }
+
+      // Si la session existe (ex: confirmation par e-mail désactivée), on continue.
       const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
         access_token: signUpData.session.access_token,
         refresh_token: signUpData.session.refresh_token,
@@ -38,7 +44,6 @@ export default function SignUpPage() {
 
       if (sessionError) throw sessionError;
       
-      // Maintenant, la session est active pour les requêtes suivantes.
       const user = sessionData.user;
       if (!user) throw new Error("Session not established");
 
@@ -54,7 +59,7 @@ export default function SignUpPage() {
 
       if (pizzeriaError) throw pizzeriaError;
 
-      alert('Inscription réussie ! Vous allez être redirigé vers le dashboard.');
+      alert('Inscription et connexion réussies ! Vous allez être redirigé vers le dashboard.');
       router.push('/dashboard');
 
     } catch (err) {
