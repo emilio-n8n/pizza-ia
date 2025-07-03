@@ -107,7 +107,7 @@ export default function SignUpPage() {
             />
           </div>
           <button type="submit" className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700">
-            S'inscrire
+            S&apos;inscrire
           </button>
         </form>
       </div>
