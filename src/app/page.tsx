@@ -5,7 +5,7 @@ export default function HomePage() {
   return (
     <div className="bg-light-white text-custom-grey">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md shadow-sm">
+      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-lg shadow-lg">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Bot size={28} className="text-pizza-red" />
@@ -36,14 +36,14 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <main className="container mx-auto px-6 py-24 text-center bg-background">
-        <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight mb-4">
+        <h1 className="text-5xl md:text-7xl font-extrabold text-foreground tracking-tight leading-tight mb-6">
           Votre pizzeria,
           <br />
           <span className="text-pizza-yellow">entièrement</span>
           <span className="text-pizza-red"> auto</span>
           <span className="text-pizza-green">matisée</span>
         </h1>
-        <p className="text-lg text-foreground/80 max-w-2xl mx-auto mb-10">
+        <p className="text-xl text-foreground/70 max-w-3xl mx-auto mb-12 leading-relaxed">
           Notre IA prend les commandes pour vous, 24/7, sans erreur et avec une touche personnelle. Libérez-vous du téléphone, concentrez-vous sur vos pizzas !
         </p>
         <Link href="/auth/signup">
@@ -66,7 +66,7 @@ export default function HomePage() {
               { icon: <Zap size={32} />, title: "Zéro erreur de commande", description: "Fini les erreurs de saisie. Chaque commande est prise avec précision et confirmée au client." },
               { icon: <Pizza size={32} />, title: "Personnalisation avancée", description: "Configurez menus, offres, zones de livraison et plus pour une expérience unique." },
             ].map((feature, i) => (
-              <div key={i} className="bg-background p-8 rounded-2xl shadow-xl text-center flex flex-col items-center hover:-translate-y-2 transition-transform duration-300 border border-border">
+              <div key={i} className="bg-background p-8 rounded-2xl shadow-lg text-center flex flex-col items-center hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-border">
                 <div className="text-pizza-yellow mb-4">{feature.icon}</div>
                 <h3 className="text-2xl font-bold text-pizza-green mb-3">{feature.title}</h3>
                 <p className="text-foreground/90">{feature.description}</p>
