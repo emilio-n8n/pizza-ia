@@ -92,16 +92,16 @@ DROP POLICY IF EXISTS "Allow owner to read their menu image" ON storage.objects;
 CREATE POLICY "Allow owner to read their menu image"
 ON storage.objects FOR SELECT
 TO authenticated
-USING (auth.uid() = owner_id);
+USING (auth.uid()::text = owner_id);
 
 DROP POLICY IF EXISTS "Allow owner to update their menu image" ON storage.objects;
 CREATE POLICY "Allow owner to update their menu image"
 ON storage.objects FOR UPDATE
 TO authenticated
-USING (auth.uid() = owner_id);
+USING (auth.uid()::text = owner_id);
 
 DROP POLICY IF EXISTS "Allow owner to delete their menu image" ON storage.objects;
 CREATE POLICY "Allow owner to delete their menu image"
 ON storage.objects FOR DELETE
 TO authenticated
-USING (auth.uid() = owner_id);
+USING (auth.uid()::text = owner_id);
