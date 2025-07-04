@@ -171,7 +171,7 @@ export default function PizzeriaDetailsPage() {
               />
             </div>
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2" htmlFor="horairesOuverture">Jours et horaires d'ouverture</label>
+              <label className="block text-gray-700 mb-2" htmlFor="horairesOuverture">Jours et horaires d&apos;ouverture</label>
               <textarea
                 id="horairesOuverture"
                 value={horairesOuverture}
@@ -249,7 +249,7 @@ export default function PizzeriaDetailsPage() {
               ></textarea>
             </div>
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2" htmlFor="boissons">Boissons (ex: Coca-Cola, Eau, Jus d'orange)</label>
+              <label className="block text-gray-700 mb-2" htmlFor="boissons">Boissons (ex: Coca-Cola, Eau, Jus d&apos;orange)</label>
               <textarea
                 id="boissons"
                 value={boissons}

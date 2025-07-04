@@ -1,5 +1,4 @@
-import { LlmResponse } from 'retell-sdk';
-import { LlmRequest } from 'retell-sdk/resources/llm';
+
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
 
@@ -18,11 +17,13 @@ type Message = {
 
 export async function POST(req: Request) {
   try {
-    const llmRequest: LlmRequest = await req.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const llmRequest: any = await req.json();
 
     // The 'begin' interaction type is sent when the call first starts.
     if (llmRequest.interaction_type === 'begin') {
-      const llmResponse: LlmResponse = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const llmResponse: any = {
         response_id: 0,
         content: "Bonjour, bienvenue chez PizzaAI. Comment puis-je vous aider ?",
         content_complete: true,
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     // For all other interactions, use the LLM to generate a response
-    const history: Message[] = llmRequest.transcript.map((turn) => ({
+    const history: Message[] = llmRequest.transcript.map((turn: { role: string; content: string }) => ({
       role: turn.role === 'agent' ? 'assistant' : 'user',
       content: turn.content,
     }));
@@ -48,30 +49,7 @@ export async function POST(req: Request) {
     });
 
     // Stream the response back to Retell
-    return result.toAIStreamResponse({
-      map: (chunk) => {
-        const llmResponse: LlmResponse = {
-          response_id: llmRequest.response_id,
-          content: chunk,
-          content_complete: false, // We are streaming
-          no_interruption_allowed: false,
-        };
-        return JSON.stringify(llmResponse);
-      },
-      data: {
-        // Send a final message to mark the end of the stream
-        onEnd: () => {
-          const endResponse: LlmResponse = {
-            response_id: llmRequest.response_id,
-            content: '',
-            content_complete: true,
-            no_interruption_allowed: false,
-            end_call: false, // Let the LLM decide when to end the call
-          };
-          return JSON.stringify(endResponse);
-        },
-      },
-    });
+    return result.toDataStreamResponse();
 
   } catch (error) {
     console.error('Error in Retell webhook:', error);

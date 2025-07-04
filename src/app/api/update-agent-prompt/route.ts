@@ -4,12 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = 'force-dynamic';
 
 const retell = new Retell({
-  apiKey: process.env.RETELL_API_KEY,
+  apiKey: process.env.RETELL_API_KEY || '',
 });
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, ...pizzeriaDetails } = await req.json();
+    const { ...pizzeriaDetails } = await req.json();
 
     // Construct a detailed prompt using all pizzeria details
     const newPrompt = `You are a friendly AI assistant for a pizza restaurant. Your main goal is to take pizza orders from customers. Be polite, efficient, and confirm the order before finalizing. Here are the details of the pizzeria you are representing:\n\n` +
