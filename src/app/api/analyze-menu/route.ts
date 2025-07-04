@@ -3,6 +3,15 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+// Define the type for a single menu item
+type MenuItem = {
+  category: string;
+  name: string;
+  description: string;
+  price: number;
+  size: string | null;
+};
+
 // Initialize Google AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
@@ -82,7 +91,7 @@ export async function POST(req: NextRequest) {
     
     // Clean up the response to ensure it's valid JSON
     const jsonString = responseText.replace(/```json|```/g, '').trim();
-    const menuData = JSON.parse(jsonString);
+    const menuData: { menu: MenuItem[] } = JSON.parse(jsonString);
 
     // 6. Find the user's pizzeria
     const { data: pizzeria, error: pizzeriaError } = await supabase
@@ -96,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 7. Save the extracted menu to the database, matching your schema
-    const menuItemsToInsert = menuData.menu.map((item: any) => ({
+    const menuItemsToInsert = menuData.menu.map((item: MenuItem) => ({
       pizzeria_id: pizzeria.id,
       category: item.category,
       name: item.name,

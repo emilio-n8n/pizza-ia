@@ -13,7 +13,7 @@ export default function DashboardPage() {
           <Link href="/dashboard/pizzeria-profile" className="block p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200">
             <h2 className="text-2xl font-bold text-red-600 mb-2">Étape 1: Profil de la Pizzeria</h2>
             <p className="text-gray-700">
-              Ajoutez ou modifiez les informations de votre établissement, comme le nom, l'adresse et le numéro de téléphone.
+              Ajoutez ou modifiez les informations de votre établissement, comme le nom, l&apos;adresse et le numéro de téléphone.
             </p>
           </Link>
 
@@ -21,7 +21,7 @@ export default function DashboardPage() {
           <Link href="/dashboard/upload-menu" className="block p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200">
             <h2 className="text-2xl font-bold text-red-600 mb-2">Étape 2: Analyser votre Menu</h2>
             <p className="text-gray-700">
-              Téléversez une image de votre menu et laissez notre IA l'analyser pour l'intégrer à votre agent conversationnel.
+              Téléversez une image de votre menu et laissez notre IA l&apos;analyser pour l&apos;intégrer à votre agent conversationnel.
             </p>
           </Link>
 

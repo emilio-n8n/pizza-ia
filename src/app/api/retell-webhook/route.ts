@@ -1,4 +1,3 @@
-import { RetellClient } from 'retell-sdk';
 import {
   LlmRequest,
   LlmResponse,
@@ -11,10 +10,6 @@ export const dynamic = 'force-dynamic';
 // Initialize Google AI client for Gemini
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_API_KEY,
-});
-
-const retellClient = new RetellClient({
-  apiKey: process.env.RETELL_API_KEY,
 });
 
 // Custom type for message history

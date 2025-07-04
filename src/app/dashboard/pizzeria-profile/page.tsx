@@ -5,9 +5,19 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 
+// Define the type for the pizzeria profile
+type PizzeriaProfile = {
+  id: string;
+  owner_id: string;
+  name: string;
+  address: string | null;
+  contact_phone: string | null;
+  created_at: string;
+};
+
 export default function PizzeriaProfilePage() {
   const [user, setUser] = useState<User | null>(null);
-  const [pizzeria, setPizzeria] = useState<any>(null);
+  const [pizzeria, setPizzeria] = useState<PizzeriaProfile | null>(null);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
@@ -27,7 +37,7 @@ export default function PizzeriaProfilePage() {
           .from('pizzerias')
           .select('*')
           .eq('owner_id', user.id)
-          .single();
+          .single<PizzeriaProfile>();
         
         if (data) {
           setPizzeria(data);
