@@ -1,16 +1,27 @@
 import { RetellClient } from 'retell-sdk';
-import { type Response } from 'express';
 import {
-  AudioEncoding,
   LlmRequest,
   LlmResponse,
 } from 'retell-sdk/models/components';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { streamText } from 'ai';
 
 export const dynamic = 'force-dynamic';
+
+// Initialize Google AI client for Gemini
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_API_KEY,
+});
 
 const retellClient = new RetellClient({
   apiKey: process.env.RETELL_API_KEY,
 });
+
+// Custom type for message history
+type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 export async function POST(req: Request) {
   try {
@@ -30,18 +41,43 @@ export async function POST(req: Request) {
       });
     }
 
-    // For now, for any other interaction, just say goodbye.
-    // We will implement the full order logic later.
-    const llmResponse: LlmResponse = {
-      response_id: llmRequest.response_id,
-      content: "Merci, au revoir !",
-      content_complete: true,
-      no_interruption_allowed: false,
-      end_call: true,
-    };
-    return new Response(JSON.stringify(llmResponse), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+    // For all other interactions, use the LLM to generate a response
+    const history: Message[] = llmRequest.transcript.map((turn) => ({
+      role: turn.role === 'agent' ? 'assistant' : 'user',
+      content: turn.content,
+    }));
+
+    const result = await streamText({
+      // Use the Gemini 1.5 Flash model
+      model: google('models/gemini-1.5-flash-latest'),
+      system: llmRequest.agent_prompt, // Use the prompt from Retell's agent config
+      messages: history,
+    });
+
+    // Stream the response back to Retell
+    return result.toAIStreamResponse({
+      map: (chunk) => {
+        const llmResponse: LlmResponse = {
+          response_id: llmRequest.response_id,
+          content: chunk,
+          content_complete: false, // We are streaming
+          no_interruption_allowed: false,
+        };
+        return JSON.stringify(llmResponse);
+      },
+      data: {
+        // Send a final message to mark the end of the stream
+        onEnd: () => {
+          const endResponse: LlmResponse = {
+            response_id: llmRequest.response_id,
+            content: '',
+            content_complete: true,
+            no_interruption_allowed: false,
+            end_call: false, // Let the LLM decide when to end the call
+          };
+          return JSON.stringify(endResponse);
+        },
+      },
     });
 
   } catch (error) {
