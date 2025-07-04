@@ -10,7 +10,7 @@ type PizzeriaProfile = {
   id: string;
   owner_id: string;
   name: string;
-  address: string | null;
+  adresse_pizzeria: string | null;
   contact_phone: string | null;
   created_at: string;
 };
@@ -42,7 +42,7 @@ export default function PizzeriaProfilePage() {
         if (data) {
           setPizzeria(data);
           setName(data.name);
-          setAddress(data.address || '');
+          setAddress(data.adresse_pizzeria || '');
           setPhone(data.contact_phone || '');
         } else if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
           setError(error.message);
@@ -64,7 +64,7 @@ export default function PizzeriaProfilePage() {
     const profileData = {
       owner_id: user.id,
       name,
-      address,
+      adresse_pizzeria: address,
       contact_phone: phone,
     };
 
