@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
+function LoginComponent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const signupMessage = searchParams.get('message');
+    if (signupMessage === 'signup_success') {
+      setMessage('Inscription réussie ! Veuillez consulter vos e-mails pour valider votre compte avant de vous connecter.');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
     setIsLoading(true);
 
     try {
@@ -23,7 +33,12 @@ export default function LoginPage() {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes("Email not confirmed")) {
+          throw new Error("Veuillez d'abord confirmer votre adresse e-mail.");
+        }
+        throw error;
+      }
 
       router.push('/dashboard');
 
@@ -40,6 +55,7 @@ export default function LoginPage() {
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center">Se connecter</h2>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+        {message && <p className="text-green-500 text-center mb-4">{message}</p>}
         <form onSubmit={handleLogin}>
           <div className="mb-4">
             <label className="block text-gray-700 mb-2" htmlFor="email">Email</label>
@@ -81,5 +97,14 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Wrap the component in Suspense to handle the initial render of useSearchParams
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Chargement...</div>}>
+      <LoginComponent />
+    </Suspense>
   );
 }
