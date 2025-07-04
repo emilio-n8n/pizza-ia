@@ -1,7 +1,5 @@
-import {
-  LlmRequest,
-  LlmResponse,
-} from 'retell-sdk/models/components';
+import { LlmResponse } from 'retell-sdk';
+import { LlmRequest } from 'retell-sdk/resources/llm';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
 
