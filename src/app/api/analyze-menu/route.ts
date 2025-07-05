@@ -123,7 +123,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Pizzeria not found for this user. Please create your pizzeria profile first.' }, { status: 404 });
     }
 
-    // 7. Save the extracted menu to the database, matching your schema
+    // 7. Clear old menu items for this pizzeria before inserting new ones
+    const { error: deleteError } = await supabase
+      .from('menu_items')
+      .delete()
+      .eq('pizzeria_id', pizzeria.id);
+
+    if (deleteError) {
+      console.error('Supabase delete error:', deleteError);
+      throw new Error('Failed to clear the old menu from the database.');
+    }
+
+    // 8. Save the extracted menu to the database
     const menuItemsToInsert = menuData.menu.map((item: MenuItem) => ({
       pizzeria_id: pizzeria.id,
       category: item.category,
@@ -140,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       console.error('Supabase insert error:', insertError);
-      throw new Error('Failed to save the menu to the database.');
+      throw new Error('Failed to save the new menu to the database.');
     }
 
     return NextResponse.json({ message: 'Menu analyzed and saved successfully!', menu: menuData.menu });

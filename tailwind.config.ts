@@ -9,6 +9,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Colors from the new design
+        "brand-red": "#e92932",
+        "brand-dark": "#181111",
+        "brand-light-gray": "#f4f0f0",
+        "brand-text-gray": "#886364",
+        "brand-border-gray": "#e5dcdc",
+
+        // Original colors (can be kept or removed if not used elsewhere)
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -22,38 +30,16 @@ const config: Config = {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
         },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        "pizza-red": "#E53E3E",
-        "pizza-yellow": "#F6E05E",
-        "pizza-green": "#38A169",
-        "pizza-dark": "#2D3748",
-        "pizza-light": "#F7FAFC",
       },
       fontFamily: {
+        // Keeping the original sans-serif but the new layout will override it
         sans: ["var(--font-geist-sans)"],
         mono: ["var(--font-geist-mono)"],
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/container-queries'),
+  ],
 };
 export default config;

@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
+// Configure the font
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-plus-jakarta-sans",
+});
+
 export const metadata: Metadata = {
-  title: "PizzaAI - L'IA pour votre pizzeria",
-  description: "Automatisez la prise de commande de votre pizzeria avec une IA.",
+  title: "Pizza AI - L'IA pour votre pizzeria",
+  description: "Libérez votre temps, laissez l'IA prendre les commandes.",
 };
 
 export default function RootLayout({
@@ -13,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="dark">
-      <body className={`${GeistSans.className} bg-background text-foreground`}>
+    <html lang="fr">
+      <body className={`${plusJakartaSans.variable} font-sans`}>
         {children}
       </body>
     </html>
