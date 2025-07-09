@@ -113,7 +113,7 @@ export default function PizzeriaDetailsPage() {
         throw new Error(errorData.error || 'Failed to update agent prompt');
       }
 
-      setMessage('Informations de la pizzeria sauvegardées avec succès et agent mis à jour !');
+      setMessage('Informations de la pizzeria sauvegardées avec succès !');
       // Optionally, redirect to a dashboard or home page
       router.push('/dashboard'); 
 

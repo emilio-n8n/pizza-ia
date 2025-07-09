@@ -87,6 +87,18 @@ export default function PizzeriaProfilePage() {
 
       if (error) throw error;
 
+      // After saving the profile, create or update the Retell agent
+      const agentResponse = await fetch('/api/create-retell-agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pizzeria_id: pizzeria ? pizzeria.id : (await supabase.from('pizzerias').select('id').eq('owner_id', user.id).single()).data.id }),
+      });
+
+      if (!agentResponse.ok) {
+        const agentError = await agentResponse.json();
+        throw new Error(agentError.error || 'Failed to create or update Retell agent.');
+      }
+
       setMessage('Profil de la pizzeria sauvegardé avec succès !');
       // Optional: redirect or refresh data
       router.refresh();

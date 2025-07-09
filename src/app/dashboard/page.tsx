@@ -1,6 +1,59 @@
+"use client";
+
 import Link from 'next/link';
+import { useState } from 'react';
+import { createGeminiLiveSession } from '@/lib/geminiLiveClient';
+import { BidiGenerateContentSession } from '@google/generative-ai';
 
 export default function DashboardPage() {
+  const [session, setSession] = useState<BidiGenerateContentSession | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [transcription, setTranscription] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleStartConversation = async () => {
+    setError(null);
+    setIsListening(true);
+
+    try {
+      const newSession = await createGeminiLiveSession();
+      setSession(newSession);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(16384, 1, 1);
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        const pcmData = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          pcmData[i] = inputData[i] * 32767;
+        }
+        newSession.send({ audio: pcmData.buffer });
+      };
+
+      for await (const response of newSession.stream) {
+        if (response.text) {
+          setTranscription((prev) => prev + response.text);
+        }
+        if (response.audio) {
+          const audioBlob = new Blob([response.audio], { type: 'audio/ogg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.play();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to start conversation:', err);
+      setError('Impossible de démarrer la conversation. Vérifiez les autorisations du microphone.');
+      setIsListening(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
@@ -24,6 +77,26 @@ export default function DashboardPage() {
               Téléversez une image de votre menu et laissez notre IA l&apos;analyser pour l&apos;intégrer à votre agent conversationnel.
             </p>
           </Link>
+
+          {/* Card for Starting Conversation */}
+          <div className="p-6 bg-white rounded-xl shadow-md">
+            <h2 className="text-2xl font-bold text-red-600 mb-2">Étape 3: Démarrer la conversation</h2>
+            <p className="text-gray-700 mb-4">
+              Cliquez sur le bouton ci-dessous pour commencer à parler avec votre assistant vocal Gemini Live.
+            </p>
+            <button
+              onClick={handleStartConversation}
+              className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
+              disabled={isListening}
+            >
+              {isListening ? 'Écoute en cours...' : 'Démarrer la conversation'}
+            </button>
+            {error && <p className="text-red-500 mt-2">Erreur: {error}</p>}
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold">Transcription:</h3>
+              <p className="text-gray-600">{transcription}</p>
+            </div>
+          </div>
 
         </div>
       </div>
