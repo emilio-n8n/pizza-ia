@@ -41,8 +41,34 @@ export default function DashboardPage() {
     setIsListening(true);
 
     try {
-      const newSession = await createGeminiLiveSession();
-      
+      const socket = await createGeminiLiveSession();
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.audio) {
+          // Play audio received from the server
+          const audioBlob = new Blob([Buffer.from(data.audio, 'base64')], { type: 'audio/ogg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.play();
+        }
+        if (data.text) {
+          // Update transcription with text received from the server
+          setTranscription((prev) => prev + data.text);
+        }
+      };
+
+      socket.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason);
+        setIsListening(false);
+        setError('Conversation terminée.');
+      };
+
+      socket.onerror = (event) => {
+        console.error('WebSocket error:', event);
+        setIsListening(false);
+        setError('Erreur de connexion. Veuillez réessayer.');
+      };
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioContext = new AudioContext();
@@ -52,32 +78,14 @@ export default function DashboardPage() {
       source.connect(processor);
       processor.connect(audioContext.destination);
 
-      processor.onaudioprocess = async (e) => {
-        try {
-          const inputData = e.inputBuffer.getChannelData(0);
-          const pcmData = new Int16Array(inputData.length);
-          for (let i = 0; i < inputData.length; i++) {
-            pcmData[i] = inputData[i] * 32767;
-          }
-          const result = await newSession.sendMessageStream([{ inlineData: { data: Buffer.from(pcmData.buffer).toString('base64'), mimeType: 'audio/ogg' } }]);
-          for await (const response of result.stream) {
-            if (response.text) {
-              setTranscription((prev) => prev + response.text);
-            }
-            if (response.candidates && response.candidates.length > 0) {
-              for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
-                  const audioBlob = new Blob([Buffer.from(part.inlineData.data, 'base64')], { type: part.inlineData.mimeType });
-                  const audioUrl = URL.createObjectURL(audioBlob);
-                  const audio = new Audio(audioUrl);
-                  audio.play();
-                }
-              }
-            }
-          }
-        } catch (onaudioError) {
-          console.error('Error in onaudioprocess:', onaudioError);
+      processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        const pcmData = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          pcmData[i] = inputData[i] * 32767;
         }
+        // Send raw PCM data to the server via WebSocket
+        socket.send(JSON.stringify({ audio: Buffer.from(pcmData.buffer).toString('base64') }));
       };
 
     } catch (err) {

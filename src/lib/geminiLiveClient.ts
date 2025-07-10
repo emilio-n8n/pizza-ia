@@ -1,18 +1,28 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// This client-side function will now establish a WebSocket connection
+// directly to the Supabase Edge Function that handles Gemini Live.
+// All Gemini Live interaction (audio processing, tool use) will happen server-side.
+export async function createGeminiLiveSession(): Promise<WebSocket> {
+  // Determine the WebSocket URL for the Supabase Edge Function
+  // In development, this might be localhost, in production, your Netlify/Supabase URL.
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host; // This will be your Netlify domain in production
+  const wsUrl = `${protocol}//${host}/api/handle-call`; // Assuming /api/handle-call is the endpoint for the Edge Function
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(wsUrl);
 
-if (!apiKey) {
-  throw new Error('Gemini API key is not defined in environment variables.');
-}
+    socket.onopen = () => {
+      console.log('WebSocket connection to Supabase Edge Function established.');
+      resolve(socket);
+    };
 
-const genAI = new GoogleGenerativeAI(apiKey);
+    socket.onerror = (event) => {
+      console.error('WebSocket error:', event);
+      reject(new Error('Failed to establish WebSocket connection to Edge Function.'));
+    };
 
-export async function createGeminiLiveSession() {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-preview-native-audio-dialog',
+    socket.onclose = (event) => {
+      console.log('WebSocket connection to Supabase Edge Function closed:', event.code, event.reason);
+    };
   });
-
-  const session = model.startChat();
-  return session;
 }

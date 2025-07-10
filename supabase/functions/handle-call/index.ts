@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { GoogleGenerativeAI, FunctionDeclarationSchemaType } from 'npm:@google/generative-ai';
+import { GoogleGenerativeAI, FunctionDeclarationSchemaType, types } from 'npm:@google/generative-ai';
 import { Twilio, twiml } from 'npm:twilio';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -51,206 +51,229 @@ async function handleWebSocket(req: Request) {
   socket.onerror = (err) => console.error('WebSocket error:', err);
 
   let geminiSession: any; // To hold the Gemini Live session
+  let callSid: string | null = null; // To store callSid from initial Twilio message
+  let pizzeriaId: string | null = null; // To store pizzeriaId from initial Twilio message
 
   socket.onmessage = async (event) => {
     const data = JSON.parse(event.data);
 
-    switch (data.event) {
-      // A. Twilio sends a "start" message when the stream begins.
-      // We receive parameters here like callSid and the prompt.
-      case 'start':
-        console.log('Twilio stream started. Initializing Gemini Live session.');
-        const startParams = data.start;
-        const pizzeriaId = startParams.pizzeriaId;
-        const callSid = startParams.callSid;
+    // The first message from the client should contain initial parameters (like pizzeriaId, callSid)
+    // and signal the start of the conversation.
+    if (data.event === 'start') {
+      console.log('Client stream started. Initializing Gemini Live session.');
+      const startParams = data.start;
+      pizzeriaId = startParams.pizzeriaId;
+      callSid = startParams.callSid;
 
-        // Fetch the full, up-to-date menu from Supabase
-        const { data: menuItems, error } = await supabase
-          .from('menu_items')
-          .select('name, description, price, size')
-          .eq('pizzeria_id', pizzeriaId)
-          .eq('is_available', true);
+      if (!pizzeriaId || !callSid) {
+        console.error('Missing pizzeriaId or callSid in start event.');
+        socket.close(1011, 'Missing initial parameters');
+        return;
+      }
 
-        if (error) {
-          console.error('Failed to fetch menu:', error);
-          socket.close(1011, 'Database error');
-          return;
-        }
-        
-        const menuString = menuItems.map(item => 
-          `- ${item.name} ${item.size ? `(${item.size})` : ''}: ${item.price}€`
-        ).join('\n');
+      // Fetch the full, up-to-date menu from Supabase
+      const { data: menuItems, error } = await supabase
+        .from('menu_items')
+        .select('name, description, price, size')
+        .eq('pizzeria_id', pizzeriaId)
+        .eq('is_available', true);
 
-        // Define the tool Gemini can use to save the order
-        const saveOrderTool = {
-          functionDeclarations: [
-            {
-              name: 'save_order',
-              description: 'Saves the final customer order to the database.',
-              parameters: {
-                type: FunctionDeclarationSchemaType.OBJECT,
-                properties: {
+      if (error) {
+        console.error('Failed to fetch menu:', error);
+        socket.close(1011, 'Database error');
+        return;
+      }
+      
+      const menuString = menuItems.map(item => 
+        `- ${item.name} ${item.size ? `(${item.size})` : ''}: ${item.price}€`
+      ).join('\n');
+
+      // Define the tool Gemini can use to save the order
+      const saveOrderTool = {
+        functionDeclarations: [
+          {
+            name: 'save_order',
+            description: 'Saves the final customer order to the database.',
+            parameters: {
+              type: FunctionDeclarationSchemaType.OBJECT,
+              properties: {
+                items: {
+                  type: FunctionDeclarationSchemaType.ARRAY,
+                  description: 'List of items in the order.',
                   items: {
-                    type: FunctionDeclarationSchemaType.ARRAY,
-                    description: 'List of items in the order.',
-                    items: {
-                      type: FunctionDeclarationSchemaType.OBJECT,
-                      properties: {
-                        name: { type: FunctionDeclarationSchemaType.STRING, description: 'Name of the item.' },
-                        quantity: { type: FunctionDeclarationSchemaType.NUMBER, description: 'Quantity of the item.' },
-                        price: { type: FunctionDeclarationSchemaType.NUMBER, description: 'Unit price of the item.' },
-                      },
-                      required: ['name', 'quantity', 'price'],
+                    type: FunctionDeclarationSchemaType.OBJECT,
+                    properties: {
+                      name: { type: FunctionDeclarationSchemaType.STRING, description: 'Name of the item.' },
+                      quantity: { type: FunctionDeclarationSchemaType.NUMBER, description: 'Quantity of the item.' },
+                      price: { type: FunctionDeclarationSchemaType.NUMBER, description: 'Unit price of the item.' },
                     },
-                  },
-                  totalPrice: {
-                    type: FunctionDeclarationSchemaType.NUMBER,
-                    description: 'The total price of the order.',
+                    required: ['name', 'quantity', 'price'],
                   },
                 },
-                required: ['items', 'totalPrice'],
+                totalPrice: {
+                  type: FunctionDeclarationSchemaType.NUMBER,
+                  description: 'The total price of the order.',
+                },
               },
+              required: ['items', 'totalPrice'],
             },
-          ],
-        };
+          },
+        ],
+      };
 
-        // Start the Gemini Live session with the dynamic prompt and the tool
+      // Start the Gemini Live session with the dynamic prompt and the tool
+      try {
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-1.5-flash', // Using a powerful model for tool use (cascade model)
+          tools: saveOrderTool,
+        });
+
+        geminiSession = await model.startChat({
+            history: [{
+                role: "user",
+                parts: [{
+                    text: `
+                    Vous êtes un assistant vocal amical et efficace pour une pizzeria.
+                    Votre objectif est de prendre la commande du client par téléphone.
+                    Voici le menu actuel de la pizzeria, avec les noms, tailles et prix :
+                    ${menuString}
+
+                    Directives :
+                    1.  Saluez le client avec "Bonjour et bienvenue chez Pizza AI, que puis-je pour vous ?".
+                    2.  Guidez le client à travers le menu, en répondant à ses questions sur les articles, les tailles et les prix.
+                    3.  Prenez la commande en notant les noms des articles, les quantités et les tailles si applicable.
+                    4.  Si un article ou une quantité n'est pas clair, demandez des précisions.
+                    5.  Une fois que le client a terminé de commander, récapitulez l'intégralité de la commande et le prix total pour confirmation.
+                    6.  ATTENTION : Une fois que le client a EXPLICITEMENT confirmé la commande finale, vous DEVEZ appeler la fonction "save_order" avec les détails exacts des articles et le prix total. Ne pas appeler la fonction avant la confirmation explicite.
+                    7.  Si le client change d'avis avant la confirmation finale, mettez à jour la commande en conséquence.
+                    8.  Soyez concis et clair dans vos réponses.
+                    `
+                }]
+            }],
+            // Configure Gemini to respond with audio
+            response_modalities: [types.ResponseModality.AUDIO],
+            // Configure input audio transcription if needed for debugging/logging
+            input_audio_transcription: {},
+        });
+
+        // Start listening for Gemini's responses and stream them back to the client
+        (async () => {
+          try {
+            for await (const response of geminiSession.receive()) {
+              if (response.server_content) {
+                // Handle text transcription from Gemini (for display on client)
+                if (response.server_content.input_transcription && response.server_content.input_transcription.text) {
+                  socket.send(JSON.stringify({ text: response.server_content.input_transcription.text }));
+                }
+                // Handle audio data from Gemini
+                if (response.server_content.model_turn && response.server_content.model_turn.parts) {
+                  for (const part of response.server_content.model_turn.parts) {
+                    if (part.inline_data && part.inline_data.mime_type.startsWith('audio/')) {
+                      // Send audio data (base64 encoded) back to the client
+                      socket.send(JSON.stringify({ audio: part.inline_data.data }));
+                    }
+                  }
+                }
+
+                // Handle function calls from Gemini
+                if (response.server_content.tool_call && response.server_content.tool_call.function_calls) {
+                  for (const fc of response.server_content.tool_call.function_calls) {
+                    if (fc.name === 'save_order') {
+                      console.log('Gemini requested to save the order:', fc.args);
+                      const { items, totalPrice } = fc.args;
+
+                      try {
+                        const { error: saveError } = await supabase.from('orders').insert({
+                          pizzeria_id: pizzeriaId,
+                          customer_phone_number: 'N/A', // Placeholder, ideally from Twilio CallSid
+                          order_details: { items },
+                          total_price: totalPrice,
+                          status: 'confirmed',
+                        });
+
+                        if (saveError) {
+                          console.error('Failed to save order to Supabase:', saveError);
+                          // Send error response to Gemini
+                          await geminiSession.send_tool_response([
+                            types.FunctionResponse.fromObject({
+                              id: fc.id,
+                              name: fc.name,
+                              response: { result: `Error saving order: ${saveError.message}` },
+                            }),
+                          ]);
+                          socket.send(JSON.stringify({ text: 'Désolé, une erreur est survenue lors de l\'enregistrement de votre commande.' }));
+                        } else {
+                          console.log('Order saved successfully!');
+                          // Send success response to Gemini
+                          await geminiSession.send_tool_response([
+                            types.FunctionResponse.fromObject({
+                              id: fc.id,
+                              name: fc.name,
+                              response: { result: 'Order saved successfully.' },
+                            }),
+                          ]);
+                          socket.send(JSON.stringify({ text: 'Votre commande a été enregistrée avec succès.' }));
+                        }
+                      } catch (dbError: any) { // Explicitly type dbError as any for now
+                        console.error('Unexpected error during Supabase order save:', dbError);
+                        await geminiSession.send_tool_response([
+                          types.FunctionResponse.fromObject({
+                            id: fc.id,
+                            name: fc.name,
+                            response: { result: `Unexpected error: ${dbError.message}` },
+                          }),
+                        ]);
+                        socket.send(JSON.stringify({ text: 'Désolé, une erreur inattendue est survenue.' }));
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch (geminiReceiveError) {
+            console.error('Error receiving from Gemini Live session:', geminiReceiveError);
+            socket.close(1011, 'Erreur de communication avec l\'assistant vocal.');
+          }
+        })();
+
+      } catch (geminiInitError) {
+        console.error('Error initializing Gemini session:', geminiInitError);
+        socket.close(1011, 'Erreur lors de l\'initialisation de l\'assistant vocal.');
+        return;
+      }
+
+    } else if (data.audio) {
+      // B. Client sends audio data in "audio" messages.
+      if (geminiSession) {
         try {
-          const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash', // Using a powerful model for tool use
-            tools: saveOrderTool,
-          });
-
-          geminiSession = model.startChat({
-              history: [{
-                  role: "user",
-                  parts: [{
-                      text: `
-                      Vous êtes un assistant vocal amical et efficace pour une pizzeria.
-                      Votre objectif est de prendre la commande du client par téléphone.
-                      Voici le menu actuel de la pizzeria, avec les noms, tailles et prix :
-                      ${menuString}
-
-                      Directives :
-                      1.  Saluez le client avec "Bonjour et bienvenue chez Pizza AI, que puis-je pour vous ?".
-                      2.  Guidez le client à travers le menu, en répondant à ses questions sur les articles, les tailles et les prix.
-                      3.  Prenez la commande en notant les noms des articles, les quantités et les tailles si applicable.
-                      4.  Si un article ou une quantité n'est pas clair, demandez des précisions.
-                      5.  Une fois que le client a terminé de commander, récapitulez l'intégralité de la commande et le prix total pour confirmation.
-                      6.  ATTENTION : Une fois que le client a EXPLICITEMENT confirmé la commande finale, vous DEVEZ appeler la fonction "save_order" avec les détails exacts des articles et le prix total. Ne pas appeler la fonction avant la confirmation explicite.
-                      7.  Si le client change d'avis avant la confirmation finale, mettez à jour la commande en conséquence.
-                      8.  Soyez concis et clair dans vos réponses.
-                      `
-                  }]
-              }]
-          });
-        } catch (geminiInitError) {
-          console.error('Error initializing Gemini session:', geminiInitError);
-          socket.close(1011, 'Erreur lors de l\'initialisation de l\'assistant vocal.');
-          return;
-        }
-
-        // Start listening for Gemini's responses
-        listenForGeminiResponse(geminiSession, socket, callSid, pizzeriaId, twilioClient);
-        break;
-
-      // B. Twilio sends audio data in "media" messages.
-      case 'media':
-        if (geminiSession) {
-          // Forward the audio chunk from Twilio to Gemini
-          const audioChunk = data.media.payload; // This is a base64 string
-          // Note: Gemini Live expects raw bytes, but here we send text for simplicity with startChat.
-          // For a true voice implementation, we'd use a native audio model and send buffer.
-          // This is a conceptual adaptation. We'll simulate the voice interaction via text chat.
-          // A real implementation would require `gemini-1.5-pro-native-audio` and different handling.
+          // Forward the audio chunk from client to Gemini
+          const audioChunk = data.audio; // This is a base64 string from client
+          const audioBytes = Uint8Array.from(atob(audioChunk), c => c.charCodeAt(0));
           
-          // This part is a placeholder for true audio processing.
-          // In a real scenario, we would not be able to decode Twilio's mulaw format in Deno easily.
-          // We will proceed with a text-based simulation driven by the logic.
+          await geminiSession.send_realtime_input({
+            audio: types.Blob.fromObject({
+              data: audioBytes,
+              mime_type: 'audio/pcm;rate=16000', // Assuming client sends 16kHz PCM
+            }),
+          });
+        } catch (sendAudioError) {
+          console.error('Error sending audio to Gemini:', sendAudioError);
+          socket.close(1011, 'Erreur lors de l\'envoi de l\'audio à l\'assistant vocal.');
         }
-        break;
-
-      // C. Twilio sends a "stop" message when the call ends.
-      case 'stop':
-        console.log('Twilio stream stopped.');
-        // Clean up resources if necessary
-        break;
+      } else {
+        console.warn('Received audio before Gemini session was initialized.');
+      }
+    } else if (data.event === 'stop') {
+      // C. Client sends a "stop" message when the conversation ends.
+      console.log('Client stream stopped.');
+      // Clean up resources if necessary
+      if (geminiSession) {
+        // Close Gemini session if it has a close method
+        // geminiSession.close(); // Not all SDKs have a close method for chat sessions
+      }
+      socket.close();
     }
   };
-}
-
-// --- Gemini Response Handler ---
-// Listens for responses from Gemini and acts on them.
-async function listenForGeminiResponse(session: any, socket: WebSocket, callSid: string, pizzeriaId: string, twilioClient: Twilio) {
-    console.log("Listening for Gemini's response...");
-    try {
-        const result = await session.sendMessage("start"); // Trigger the initial response
-        const response = result.response;
-
-        // 1. Check for a function call to save the order
-        const functionCalls = response.functionCalls();
-        if (functionCalls && functionCalls.length > 0) {
-            const call = functionCalls[0];
-            if (call.name === 'save_order') {
-                console.log('Gemini requested to save the order:', call.args);
-                const { items, totalPrice } = call.args;
-
-                try {
-                    // Save to Supabase
-                    const { error } = await supabase.from('orders').insert({
-                        pizzeria_id: pizzeriaId,
-                        customer_phone_number: 'N/A', // We can get this from the start event if needed
-                        order_details: { items },
-                        total_price: totalPrice,
-                        status: 'confirmed',
-                    });
-
-                    if (error) {
-                        console.error('Failed to save order to Supabase:', error);
-                        const twimlResponse = new twiml.VoiceResponse();
-                        twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, une erreur technique nous empêche d'enregistrer votre commande. Veuillez réessayer plus tard. Au revoir.');
-                        twimlResponse.hangup();
-                        await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
-                    } else {
-                        console.log('Order saved successfully!');
-                        const twimlResponse = new twiml.VoiceResponse();
-                        twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Merci, votre commande a été enregistrée. Elle sera prête bientôt. Au revoir !');
-                        twimlResponse.hangup();
-                        await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
-                    }
-                } catch (dbError) {
-                    console.error('Unexpected error during Supabase order save:', dbError);
-                    const twimlResponse = new twiml.VoiceResponse();
-                    twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, une erreur inattendue est survenue lors de l'enregistrement de votre commande. Veuillez réessayer plus tard. Au revoir.');
-                    twimlResponse.hangup();
-                    await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
-                }
-            }
-        } else {
-            // 2. If it's a text response, send it as speech to Twilio
-            const text = response.text();
-            console.log('Gemini says:', text);
-
-            const twimlResponse = new twiml.VoiceResponse();
-            twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, text);
-            try {
-                await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
-            } catch (twilioUpdateError) {
-                console.error('Failed to update Twilio call with Gemini response:', twilioUpdateError);
-                // At this point, we can't speak to the user, so just log.
-            }
-        }
-    } catch (geminiError) {
-        console.error('Error interacting with Gemini API:', geminiError);
-        const twimlResponse = new twiml.VoiceResponse();
-        twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, une erreur technique avec notre assistant vocal nous empêche de prendre votre commande. Veuillez réessayer plus tard. Au revoir.');
-        twimlResponse.hangup();
-        try {
-            await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
-        } catch (twilioError) {
-            console.error('Failed to send error message to Twilio:', twilioError);
-        }
-    }
 }
 
 
