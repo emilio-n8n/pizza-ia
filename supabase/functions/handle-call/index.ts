@@ -55,7 +55,14 @@ async function handleWebSocket(req: Request) {
   let pizzeriaId: string | null = null; // To store pizzeriaId from initial Twilio message
 
   socket.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (parseError: unknown) {
+      console.error('Error parsing WebSocket message data:', parseError);
+      socket.close(1011, 'Invalid message format.');
+      return;
+    }
 
     // The first message from the client should contain initial parameters (like pizzeriaId, callSid)
     // and signal the start of the conversation.
@@ -80,7 +87,7 @@ async function handleWebSocket(req: Request) {
 
       if (error) {
         console.error('Failed to fetch menu:', error);
-        socket.close(1011, 'Database error');
+        socket.close(1011, 'Erreur lors du chargement du menu. Veuillez réessayer plus tard.');
         return;
       }
       
@@ -214,16 +221,17 @@ async function handleWebSocket(req: Request) {
                           ]);
                           socket.send(JSON.stringify({ text: 'Votre commande a été enregistrée avec succès.' }));
                         }
-                      } catch (dbError: any) { // Explicitly type dbError as any for now
+                      } catch (dbError: unknown) { // Explicitly type dbError as unknown
                         console.error('Unexpected error during Supabase order save:', dbError);
+                        const dbErrorMessage = dbError instanceof Error ? dbError.message : 'An unknown database error occurred.';
                         await geminiSession.send_tool_response([
                           types.FunctionResponse.fromObject({
                             id: fc.id,
                             name: fc.name,
-                            response: { result: `Unexpected error: ${dbError.message}` },
+                            response: { result: `Unexpected error: ${dbErrorMessage}` },
                           }),
                         ]);
-                        socket.send(JSON.stringify({ text: 'Désolé, une erreur inattendue est survenue.' }));
+                        socket.send(JSON.stringify({ text: 'Désolé, une erreur inattendue est survenue lors de l\'enregistrement de votre commande.' }));
                       }
                     }
                   }
@@ -296,7 +304,8 @@ async function handleIncomingCall(req: Request) {
     if (error || !pizzeria) {
       console.error('Could not find pizzeria for number:', to, error);
       const response = new twiml.VoiceResponse();
-      response.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, le service que vous essayez de joindre n\'est pas disponible ou n\'est pas configuré. Au revoir.');
+      const userMessage = error && error.code === 'PGRST116' ? 'Désolé, ce numéro de pizzeria n\'est pas enregistré chez nous.' : 'Désolé, une erreur est survenue lors de la recherche de la pizzeria. Veuillez réessayer plus tard.';
+      response.say({ voice: 'alice', language: 'fr-FR' }, userMessage + ' Au revoir.');
       response.hangup();
       return new Response(response.toString(), { headers: { 'Content-Type': 'text/xml' } });
     }
