@@ -1,15 +1,40 @@
 "use client";
 
-import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createGeminiLiveSession } from '@/lib/geminiLiveClient';
-
+import { supabase } from '@/lib/supabaseClient';
+import Link from 'next/link';
 
 export default function DashboardPage() {
-  
   const [isListening, setIsListening] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [twilioPhoneNumber, setTwilioPhoneNumber] = useState<string | null>(null);
+  const [pizzeriaLoading, setPizzeriaLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPizzeriaData = async () => {
+      setPizzeriaLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: pizzeria, error: fetchError } = await supabase
+          .from('pizzerias')
+          .select('twilio_phone_number')
+          .eq('user_id', user.id)
+          .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows found
+          console.error('Error fetching pizzeria data:', fetchError);
+          setError('Erreur lors du chargement des informations de la pizzeria.');
+        } else if (pizzeria) {
+          setTwilioPhoneNumber(pizzeria.twilio_phone_number);
+        }
+      }
+      setPizzeriaLoading(false);
+    };
+
+    fetchPizzeriaData();
+  }, []);
 
   const handleStartConversation = async () => {
     setError(null);
@@ -86,6 +111,18 @@ export default function DashboardPage() {
             </p>
           </Link>
 
+          {/* Card for Twilio Phone Number */}
+          <div className="p-6 bg-white rounded-xl shadow-md">
+            <h2 className="text-2xl font-bold text-red-600 mb-2">Votre Numéro de Téléphone IA</h2>
+            {pizzeriaLoading ? (
+              <p className="text-gray-600">Chargement du numéro...</p>
+            ) : twilioPhoneNumber ? (
+              <p className="text-gray-700 text-xl font-semibold">{twilioPhoneNumber}</p>
+            ) : (
+              <p className="text-gray-700">Aucun numéro attribué. Veuillez vous abonner.</p>
+            )}
+          </div>
+
           {/* Card for Starting Conversation */}
           <div className="p-6 bg-white rounded-xl shadow-md">
             <h2 className="text-2xl font-bold text-red-600 mb-2">Étape 3: Démarrer la conversation</h2>
@@ -104,6 +141,20 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold">Transcription:</h3>
               <p className="text-gray-600">{transcription}</p>
             </div>
+          </div>
+
+          {/* Placeholder for Orders */}
+          <div className="p-6 bg-white rounded-xl shadow-md">
+            <h2 className="text-2xl font-bold text-red-600 mb-2">Commandes Récentes</h2>
+            <p className="text-gray-700">Les commandes passées via votre assistant vocal apparaîtront ici.</p>
+            {/* Future: Display actual order list */}
+          </div>
+
+          {/* Placeholder for Statistics */}
+          <div className="p-6 bg-white rounded-xl shadow-md">
+            <h2 className="text-2xl font-bold text-red-600 mb-2">Statistiques d&apos;Utilisation</h2>
+            <p className="text-gray-700">Des statistiques sur l&apos;utilisation de votre assistant vocal seront affichées ici.</p>
+            {/* Future: Display usage statistics */}
           </div>
 
         </div>

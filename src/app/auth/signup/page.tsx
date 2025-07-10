@@ -54,7 +54,7 @@ export default function SignupPage() {
     // You should show a message to the user to check their email.
     // For this example, we'll just refresh to let the middleware handle it.
     // A better UX would be to show a "Check your email" message.
-    router.push('/?message=Check your email to confirm your account.');
+    router.push('/onboarding/choose-plan');
   };
 
   return (
