@@ -30,6 +30,8 @@ export default function DashboardPage() {
   const [pizzeriaLoading, setPizzeriaLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]); // State to store orders
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [totalRevenue, setTotalRevenue] = useState<number>(0);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -62,6 +64,11 @@ export default function DashboardPage() {
             setError('Erreur lors du chargement des commandes.');
           } else {
             setOrders(fetchedOrders || []);
+            // Calculate statistics
+            const calculatedTotalOrders = fetchedOrders ? fetchedOrders.length : 0;
+            const calculatedTotalRevenue = fetchedOrders ? fetchedOrders.reduce((sum, order) => sum + order.total_price, 0) : 0;
+            setTotalOrders(calculatedTotalOrders);
+            setTotalRevenue(calculatedTotalRevenue);
           }
         }
       }
@@ -222,11 +229,17 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Placeholder for Statistics */}
+          {/* Card for Statistics */}
           <div className="p-6 bg-white rounded-xl shadow-md">
-            <h2 className="text-2xl font-bold text-red-600 mb-2">Statistiques d&apos;Utilisation</h2>
-            <p className="text-gray-700">Des statistiques sur l&apos;utilisation de votre assistant vocal seront affichées ici.</p>
-            {/* Future: Display usage statistics */}
+            <h2 className="text-2xl font-bold text-red-600 mb-2">Statistiques d'Utilisation</h2>
+            {ordersLoading ? (
+              <p className="text-gray-600">Chargement des statistiques...</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-gray-700">Total des commandes: <span className="font-semibold">{totalOrders}</span></p>
+                <p className="text-gray-700">Revenu total: <span className="font-semibold">{totalRevenue.toFixed(2)}€</span></p>
+              </div>
+            )}
           </div>
 
         </div>
