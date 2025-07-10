@@ -115,32 +115,43 @@ async function handleWebSocket(req: Request) {
         };
 
         // Start the Gemini Live session with the dynamic prompt and the tool
-        const model = genAI.getGenerativeModel({
-          model: 'gemini-1.5-flash', // Using a powerful model for tool use
-          tools: saveOrderTool,
-        });
+        try {
+          const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash', // Using a powerful model for tool use
+            tools: saveOrderTool,
+          });
 
-        geminiSession = model.startChat({
-            history: [{
-                role: "user",
-                parts: [{
-                    text: `
-                    You are a friendly and efficient voice assistant for a pizzeria.
-                    Your goal is to take a customer's order over the phone.
-                    Here is the menu:
-                    ${menuString}
+          geminiSession = model.startChat({
+              history: [{
+                  role: "user",
+                  parts: [{
+                      text: `
+                      Vous êtes un assistant vocal amical et efficace pour une pizzeria.
+                      Votre objectif est de prendre la commande du client par téléphone.
+                      Voici le menu actuel de la pizzeria, avec les noms, tailles et prix :
+                      ${menuString}
 
-                    Guide the customer through the menu, take their order, and confirm it with them.
-                    Once the customer confirms the final order, you MUST call the "save_order" function with the details.
-                    Do not call the function before the customer explicitly confirms.
-                    Start the conversation by saying "Bonjour et bienvenue chez Pizza AI, que puis-je pour vous ?".
-                    `
-                }]
-            }]
-        });
+                      Directives :
+                      1.  Saluez le client avec "Bonjour et bienvenue chez Pizza AI, que puis-je pour vous ?".
+                      2.  Guidez le client à travers le menu, en répondant à ses questions sur les articles, les tailles et les prix.
+                      3.  Prenez la commande en notant les noms des articles, les quantités et les tailles si applicable.
+                      4.  Si un article ou une quantité n'est pas clair, demandez des précisions.
+                      5.  Une fois que le client a terminé de commander, récapitulez l'intégralité de la commande et le prix total pour confirmation.
+                      6.  ATTENTION : Une fois que le client a EXPLICITEMENT confirmé la commande finale, vous DEVEZ appeler la fonction "save_order" avec les détails exacts des articles et le prix total. Ne pas appeler la fonction avant la confirmation explicite.
+                      7.  Si le client change d'avis avant la confirmation finale, mettez à jour la commande en conséquence.
+                      8.  Soyez concis et clair dans vos réponses.
+                      `
+                  }]
+              }]
+          });
+        } catch (geminiInitError) {
+          console.error('Error initializing Gemini session:', geminiInitError);
+          socket.close(1011, 'Erreur lors de l\'initialisation de l\'assistant vocal.');
+          return;
+        }
 
         // Start listening for Gemini's responses
-        listenForGeminiResponse(geminiSession, socket, callSid, pizzeriaId);
+        listenForGeminiResponse(geminiSession, socket, callSid, pizzeriaId, twilioClient);
         break;
 
       // B. Twilio sends audio data in "media" messages.
@@ -170,52 +181,75 @@ async function handleWebSocket(req: Request) {
 
 // --- Gemini Response Handler ---
 // Listens for responses from Gemini and acts on them.
-async function listenForGeminiResponse(session: any, socket: WebSocket, callSid: string, pizzeriaId: string) {
+async function listenForGeminiResponse(session: any, socket: WebSocket, callSid: string, pizzeriaId: string, twilioClient: Twilio) {
     console.log("Listening for Gemini's response...");
-    const result = await session.sendMessage("start"); // Trigger the initial response
-    const response = result.response;
+    try {
+        const result = await session.sendMessage("start"); // Trigger the initial response
+        const response = result.response;
 
-    // 1. Check for a function call to save the order
-    const functionCalls = response.functionCalls();
-    if (functionCalls && functionCalls.length > 0) {
-        const call = functionCalls[0];
-        if (call.name === 'save_order') {
-            console.log('Gemini requested to save the order:', call.args);
-            const { items, totalPrice } = call.args;
+        // 1. Check for a function call to save the order
+        const functionCalls = response.functionCalls();
+        if (functionCalls && functionCalls.length > 0) {
+            const call = functionCalls[0];
+            if (call.name === 'save_order') {
+                console.log('Gemini requested to save the order:', call.args);
+                const { items, totalPrice } = call.args;
 
-            // Save to Supabase
-            const { error } = await supabase.from('orders').insert({
-                pizzeria_id: pizzeriaId,
-                customer_phone_number: 'N/A', // We can get this from the start event if needed
-                order_details: { items },
-                total_price: totalPrice,
-                status: 'confirmed',
-            });
+                try {
+                    // Save to Supabase
+                    const { error } = await supabase.from('orders').insert({
+                        pizzeria_id: pizzeriaId,
+                        customer_phone_number: 'N/A', // We can get this from the start event if needed
+                        order_details: { items },
+                        total_price: totalPrice,
+                        status: 'confirmed',
+                    });
 
-            if (error) {
-                console.error('Failed to save order:', error);
-                // Handle error - maybe say something to the user
-            } else {
-                console.log('Order saved successfully!');
-                // Send a final message and hang up
-                const twilioResponse = new twiml.VoiceResponse();
-                twilioResponse.say('Merci, votre commande a été enregistrée. Elle sera prête bientôt. Au revoir !');
-                twilioResponse.hangup();
-                
-                // This is tricky in a WebSocket context. We need to update the live call.
-                // This requires using the Twilio REST API to modify the call state.
+                    if (error) {
+                        console.error('Failed to save order to Supabase:', error);
+                        const twimlResponse = new twiml.VoiceResponse();
+                        twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, une erreur technique nous empêche d'enregistrer votre commande. Veuillez réessayer plus tard. Au revoir.');
+                        twimlResponse.hangup();
+                        await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
+                    } else {
+                        console.log('Order saved successfully!');
+                        const twimlResponse = new twiml.VoiceResponse();
+                        twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Merci, votre commande a été enregistrée. Elle sera prête bientôt. Au revoir !');
+                        twimlResponse.hangup();
+                        await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
+                    }
+                } catch (dbError) {
+                    console.error('Unexpected error during Supabase order save:', dbError);
+                    const twimlResponse = new twiml.VoiceResponse();
+                    twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, une erreur inattendue est survenue lors de l'enregistrement de votre commande. Veuillez réessayer plus tard. Au revoir.');
+                    twimlResponse.hangup();
+                    await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
+                }
+            }
+        } else {
+            // 2. If it's a text response, send it as speech to Twilio
+            const text = response.text();
+            console.log('Gemini says:', text);
+
+            const twimlResponse = new twiml.VoiceResponse();
+            twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, text);
+            try {
+                await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
+            } catch (twilioUpdateError) {
+                console.error('Failed to update Twilio call with Gemini response:', twilioUpdateError);
+                // At this point, we can't speak to the user, so just log.
             }
         }
-    } else {
-        // 2. If it's a text response, send it as speech to Twilio
-        const text = response.text();
-        console.log('Gemini says:', text);
-
-        const twilioResponse = new twiml.VoiceResponse();
-        twilioResponse.say({ voice: 'alice', language: 'fr-FR' }, text);
-        
-        // This also requires a call update. The WebSocket is for media, not control.
-        // The architecture needs refinement.
+    } catch (geminiError) {
+        console.error('Error interacting with Gemini API:', geminiError);
+        const twimlResponse = new twiml.VoiceResponse();
+        twimlResponse.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, une erreur technique avec notre assistant vocal nous empêche de prendre votre commande. Veuillez réessayer plus tard. Au revoir.');
+        twimlResponse.hangup();
+        try {
+            await twilioClient.calls(callSid).update({ twiml: twimlResponse.toString() });
+        } catch (twilioError) {
+            console.error('Failed to send error message to Twilio:', twilioError);
+        }
     }
 }
 
@@ -239,7 +273,7 @@ async function handleIncomingCall(req: Request) {
     if (error || !pizzeria) {
       console.error('Could not find pizzeria for number:', to, error);
       const response = new twiml.VoiceResponse();
-      response.say({ voice: 'alice', language: 'fr-FR' }, 'Bonjour. Le service que vous essayez de joindre n\'est pas disponible. Au revoir.');
+      response.say({ voice: 'alice', language: 'fr-FR' }, 'Désolé, le service que vous essayez de joindre n\'est pas disponible ou n\'est pas configuré. Au revoir.');
       response.hangup();
       return new Response(response.toString(), { headers: { 'Content-Type': 'text/xml' } });
     }
@@ -257,8 +291,12 @@ async function handleIncomingCall(req: Request) {
     console.log('Responding with TwiML to connect to WebSocket.');
     return new Response(response.toString(), { headers: { 'Content-Type': 'text/xml' } });
 
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Error in handleIncomingCall:', err);
-    return new Response('Internal Server Error', { status: 500 });
+    const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+    const response = new twiml.VoiceResponse();
+    response.say({ voice: 'alice', language: 'fr-FR' }, `Désolé, une erreur technique est survenue: ${errorMessage}. Veuillez réessayer plus tard. Au revoir.`);
+    response.hangup();
+    return new Response(response.toString(), { headers: { 'Content-Type': 'text/xml' } });
   }
 }
