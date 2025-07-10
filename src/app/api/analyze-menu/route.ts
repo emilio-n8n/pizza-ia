@@ -107,16 +107,57 @@ export async function POST(req: NextRequest) {
     // 5. Call Gemini API
     const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();
-    
-    // Clean up the response to ensure it's valid JSON
-    const jsonString = responseText.replace(/```json|```/g, '').trim();
-    const menuData: { menu: MenuItem[] } = JSON.parse(jsonString);
+
+    let menuData: { menu: MenuItem[] };
+    try {
+      // Robustly extract JSON from the response text
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+      let rawJsonString = responseText;
+      if (jsonMatch && jsonMatch[1]) {
+        rawJsonString = jsonMatch[1];
+      } else {
+        // Fallback if no ```json block, try to parse the whole thing
+        rawJsonString = responseText.replace(/```json|```/g, '').trim();
+      }
+
+      menuData = JSON.parse(rawJsonString);
+
+      // Basic validation of the parsed structure
+      if (!menuData || !Array.isArray(menuData.menu)) {
+        throw new Error('Invalid menu format from AI: "menu" array not found.');
+      }
+
+      // Validate each menu item
+      menuData.menu = menuData.menu.filter((item: MenuItem) => {
+        const isValid =
+          typeof item.category === 'string' &&
+          typeof item.name === 'string' &&
+          typeof item.price === 'number' &&
+          item.price >= 0 && // Price should be non-negative
+          (item.description === undefined || typeof item.description === 'string') &&
+          (item.size === undefined || typeof item.size === 'string' || item.size === null);
+
+        if (!isValid) {
+          console.warn('Invalid menu item filtered out:', item);
+        }
+        return isValid;
+      });
+
+      if (menuData.menu.length === 0) {
+        throw new Error('No valid menu items extracted from the image. Please try a clearer image.');
+      }
+
+    } catch (parseError: unknown) {
+      const errorMessage = parseError instanceof Error ? parseError.message : 'An unknown error occurred during parsing.';
+      console.error('Error parsing or validating Gemini response:', parseError);
+      return NextResponse.json({ error: `Failed to parse menu from AI. Please ensure the image is clear and try again. Details: ${errorMessage}` }, { status: 400 });
+    }
 
     // 6. Find the user's pizzeria
     const { data: pizzeria, error: pizzeriaError } = await supabase
       .from('pizzerias')
       .select('id')
-      .eq('owner_id', user.id)
+      .eq('user_id', user.id) // Changed from owner_id to user_id based on schema
       .single();
 
     if (pizzeriaError || !pizzeria) {
@@ -131,7 +172,7 @@ export async function POST(req: NextRequest) {
 
     if (deleteError) {
       console.error('Supabase delete error:', deleteError);
-      throw new Error('Failed to clear the old menu from the database.');
+      return NextResponse.json({ error: 'Failed to clear the old menu from the database.' }, { status: 500 });
     }
 
     // 8. Save the extracted menu to the database
@@ -139,7 +180,7 @@ export async function POST(req: NextRequest) {
       pizzeria_id: pizzeria.id,
       category: item.category,
       name: item.name,
-      description: item.description,
+      description: item.description || '', // Ensure description is string, not undefined
       price: item.price,
       size: item.size,
       is_available: true, // Default to available

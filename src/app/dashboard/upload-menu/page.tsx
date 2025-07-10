@@ -176,10 +176,8 @@ export default function ManageMenuPage() {
         throw new Error(result.error || "Une erreur est survenue lors de l'analyse.");
       }
 
-      setMessage('Menu analysé avec succès ! La liste a été mise à jour.');
-      // The API now clears and inserts, so we just need to refetch
-      const { data: items } = await supabase.from('menu_items').select('*').eq('pizzeria_id', pizzeriaId!).order('category, name');
-      setMenuItems(items || []);
+      setMessage('Menu analysé avec succès ! Veuillez vérifier les éléments et sauvegarder les modifications.');
+      setMenuItems(result.menu || []);
 
     } catch (err) {
       const error = err as Error;
