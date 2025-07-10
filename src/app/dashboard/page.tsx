@@ -5,35 +5,71 @@ import { createGeminiLiveSession } from '@/lib/geminiLiveClient';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface Order {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  delivery_address: string;
+  order_details: { items: OrderItem[] }; // Adjust this type based on your JSONB structure
+  total_price: number;
+  status: string;
+  created_at: string;
+}
+
 export default function DashboardPage() {
   const [isListening, setIsListening] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState<string | null>(null);
   const [pizzeriaLoading, setPizzeriaLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]); // State to store orders
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPizzeriaData = async () => {
+    const fetchDashboardData = async () => {
       setPizzeriaLoading(true);
+      setOrdersLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: pizzeria, error: fetchError } = await supabase
+        // Fetch pizzeria data
+        const { data: pizzeria, error: fetchPizzeriaError } = await supabase
           .from('pizzerias')
-          .select('twilio_phone_number')
+          .select('id, twilio_phone_number')
           .eq('user_id', user.id)
           .single();
 
-        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows found
-          console.error('Error fetching pizzeria data:', fetchError);
+        if (fetchPizzeriaError && fetchPizzeriaError.code !== 'PGRST116') {
+          console.error('Error fetching pizzeria data:', fetchPizzeriaError);
           setError('Erreur lors du chargement des informations de la pizzeria.');
         } else if (pizzeria) {
           setTwilioPhoneNumber(pizzeria.twilio_phone_number);
+
+          // Fetch orders for the pizzeria
+          const { data: fetchedOrders, error: fetchOrdersError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('pizzeria_id', pizzeria.id)
+            .order('created_at', { ascending: false }); // Order by most recent
+
+          if (fetchOrdersError) {
+            console.error('Error fetching orders:', fetchOrdersError);
+            setError('Erreur lors du chargement des commandes.');
+          } else {
+            setOrders(fetchedOrders || []);
+          }
         }
       }
       setPizzeriaLoading(false);
+      setOrdersLoading(false);
     };
 
-    fetchPizzeriaData();
+    fetchDashboardData();
   }, []);
 
   const handleStartConversation = async () => {
@@ -151,11 +187,39 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Placeholder for Orders */}
-          <div className="p-6 bg-white rounded-xl shadow-md">
-            <h2 className="text-2xl font-bold text-red-600 mb-2">Commandes Récentes</h2>
-            <p className="text-gray-700">Les commandes passées via votre assistant vocal apparaîtront ici.</p>
-            {/* Future: Display actual order list */}
+          {/* Card for Recent Orders */}
+          <div className="p-6 bg-white rounded-xl shadow-md col-span-full">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Commandes Récentes</h2>
+            {ordersLoading ? (
+              <p className="text-gray-600">Chargement des commandes...</p>
+            ) : orders.length === 0 ? (
+              <p className="text-gray-700">Aucune commande passée via votre assistant vocal pour le moment.</p>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((order) => (
+                  <div key={order.id} className="border-b pb-4 last:pb-0 last:border-b-0">
+                    <p className="text-lg font-semibold">Commande #{order.id.substring(0, 8)}</p>
+                    <p className="text-gray-700">Client: {order.customer_name || 'N/A'} ({order.customer_phone || 'N/A'})</p>
+                    <p className="text-gray-700">Adresse: {order.delivery_address || 'N/A'}</p>
+                    <p className="text-gray-700">Statut: <span className="font-medium text-blue-600">{order.status}</span></p>
+                    <p className="text-gray-700">Total: <span className="font-bold">{order.total_price}€</span></p>
+                    <p className="text-gray-700">Date: {new Date(order.created_at).toLocaleString()}</p>
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p className="font-semibold">Détails des articles:</p>
+                      {order.order_details?.items && order.order_details.items.length > 0 ? (
+                        <ul className="list-disc list-inside">
+                          {order.order_details.items.map((item: OrderItem, idx: number) => (
+                            <li key={idx}>{item.quantity} x {item.name} ({item.price}€/unité)</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>Aucun détail d'article disponible.</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Placeholder for Statistics */}
