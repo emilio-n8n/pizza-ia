@@ -70,7 +70,7 @@ export default function HomePage() {
                   >
                     <div className="flex flex-col gap-2 text-center">
                       <h1 className="text-white text-4xl font-black leading-tight tracking-[-0.033em] @[480px]:text-5xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em]">
-                        Libérez votre temps, laissez l'IA prendre les commandes
+                        Libérez votre temps, laissez l&apos;IA prendre les commandes
                       </h1>
                       <h2 className="text-white text-sm font-normal leading-normal @[480px]:text-base @[480px]:font-normal @[480px]:leading-normal">
                         Nos agents IA répondent au téléphone et prennent les commandes pour vous, libérant ainsi votre temps pour vous concentrer sur la préparation de délicieuses pizzas.
@@ -90,7 +90,7 @@ export default function HomePage() {
                     Pourquoi choisir Pizza AI ?
                   </h2>
                   <p className="text-[#181111] text-base font-normal leading-normal max-w-[720px]">
-                    Nos agents IA sont conçus pour améliorer l'efficacité de votre pizzeria et la satisfaction de vos clients.
+                    Nos agents IA sont conçus pour améliorer l&apos;efficacité de votre pizzeria et la satisfaction de vos clients.
                   </p>
                 </div>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-3 p-0">
@@ -106,9 +106,9 @@ export default function HomePage() {
                   <div className="flex flex-1 flex-col gap-3 rounded-lg border border-[#e5dcdc] bg-white p-4">
                     <div className="text-[#181111]"><UsersIcon /></div>
                     <div className="flex flex-col gap-1">
-                      <h3 className="text-[#181111] text-base font-bold leading-tight">Amélioration de l'expérience client</h3>
+                      <h3 className="text-[#181111] text-base font-bold leading-tight">Amélioration de l&apos;expérience client</h3>
                       <p className="text-[#886364] text-sm font-normal leading-normal">
-                        Les clients peuvent commander à tout moment, sans attendre, et bénéficier d'un service rapide et efficace.
+                        Les clients peuvent commander à tout moment, sans attendre, et bénéficier d&apos;un service rapide et efficace.
                       </p>
                     </div>
                   </div>
@@ -144,7 +144,7 @@ export default function HomePage() {
               <footer className="flex flex-col gap-6 px-5 py-10 text-center @container">
                 <div className="flex flex-wrap items-center justify-center gap-6 @[480px]:flex-row @[480px]:justify-around">
                   <a className="text-[#886364] text-base font-normal leading-normal min-w-40" href="#">Politique de confidentialité</a>
-                  <a className="text-[#886364] text-base font-normal leading-normal min-w-40" href="#">Conditions d'utilisation</a>
+                  <a className="text-[#886364] text-base font-normal leading-normal min-w-40" href="#">Conditions d&apos;utilisation</a>
                   <a className="text-[#886364] text-base font-normal leading-normal min-w-40" href="#">Contact</a>
                 </div>
                 <div className="flex flex-wrap justify-center gap-4">

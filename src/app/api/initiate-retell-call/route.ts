@@ -40,14 +40,14 @@ export async function POST() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // TODO: Implement Gemini Live prompt/system instruction update
-    console.log("Gemini Live prompt/system instruction update to be implemented.");
+    // TODO: Implement Gemini Live session creation
+    console.log("Gemini Live session creation to be implemented.");
 
-    return NextResponse.json({ message: 'Gemini Live prompt updated successfully.' });
+    return NextResponse.json({ message: 'Gemini Live session created successfully.' });
 
   } catch (error) {
-    console.error("Error updating Gemini Live prompt:", error);
+    console.error("Error creating Gemini Live session:", error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return NextResponse.json({ error: `Failed to update Gemini Live prompt: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ error: `Failed to create Gemini Live session: ${errorMessage}` }, { status: 500 });
   }
 }

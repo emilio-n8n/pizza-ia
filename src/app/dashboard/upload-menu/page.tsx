@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { PlusCircle, Trash2, UploadCloud, Save, Bot } from 'lucide-react';
 
@@ -74,7 +74,7 @@ export default function ManageMenuPage() {
 
   // --- Handlers for manual menu editing ---
 
-  const handleItemChange = (index: number, field: keyof MenuItem, value: any) => {
+  const handleItemChange = (index: number, field: keyof MenuItem, value: string | number | boolean) => {
     const updatedItems = [...menuItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     setMenuItems(updatedItems);
@@ -114,7 +114,7 @@ export default function ManageMenuPage() {
     const itemsToUpdate = menuItems.filter(item => !item.id.startsWith('new-'));
     const itemsToInsert = menuItems
         .filter(item => item.id.startsWith('new-'))
-        .map(({ id, ...rest }) => rest); // Remove temporary ID
+        .map(({ ...rest }) => rest); // Remove temporary ID
 
     // First, delete items that are no longer in the list
     const currentIds = menuItems.map(item => item.id);
@@ -173,7 +173,7 @@ export default function ManageMenuPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Une erreur est survenue lors de l\'analyse.');
+        throw new Error(result.error || "Une erreur est survenue lors de l'analyse.");
       }
 
       setMessage('Menu analysé avec succès ! La liste a été mise à jour.');
@@ -226,7 +226,7 @@ export default function ManageMenuPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold text-gray-800 mb-4">Gestion du Menu</h1>
-        <p className="text-gray-600 mb-8">Modifiez votre menu manuellement ou téléversez une nouvelle image pour que notre IA l'analyse.</p>
+        <p className="text-gray-600 mb-8">Modifiez votre menu manuellement ou téléversez une nouvelle image pour que notre IA l&apos;analyse.</p>
 
         {/* --- Section 1: AI Upload --- */}
         <div className="bg-white p-6 rounded-xl shadow-md mb-8">
@@ -285,7 +285,7 @@ export default function ManageMenuPage() {
                 disabled={isUpdatingAgent || menuItems.length === 0}
                 className="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center"
             >
-                <Bot className="mr-2" /> {isUpdatingAgent ? 'Mise à jour...' : 'Mettre à jour l\'agent'}
+                <Bot className="mr-2" /> {isUpdatingAgent ? 'Mise à jour...' : "Mettre à jour l'agent"}
             </button>
         </div>
       </div>

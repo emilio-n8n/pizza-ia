@@ -87,11 +87,31 @@ export default function PizzeriaProfilePage() {
 
       if (error) throw error;
 
+      // --- Securely get pizzeria_id ---
+      let pizzeriaIdToUpdate: string;
+
+      if (pizzeria) {
+        pizzeriaIdToUpdate = pizzeria.id;
+      } else {
+        // If it was a new pizzeria, we need to fetch its ID
+        const { data: newPizzeria, error: fetchError } = await supabase
+          .from('pizzerias')
+          .select('id')
+          .eq('owner_id', user.id)
+          .single();
+        
+        if (fetchError || !newPizzeria) {
+          throw new Error("Could not find the newly created pizzeria's ID.");
+        }
+        pizzeriaIdToUpdate = newPizzeria.id;
+      }
+      // --- End of secure get ---
+
       // After saving the profile, create or update the Retell agent
       const agentResponse = await fetch('/api/create-retell-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pizzeria_id: pizzeria ? pizzeria.id : (await supabase.from('pizzerias').select('id').eq('owner_id', user.id).single()).data.id }),
+        body: JSON.stringify({ pizzeria_id: pizzeriaIdToUpdate }),
       });
 
       if (!agentResponse.ok) {

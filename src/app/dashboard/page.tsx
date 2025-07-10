@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { createGeminiLiveSession } from '@/lib/geminiLiveClient';
-import { BidiGenerateContentSession } from '@google/generative-ai';
+
 
 export default function DashboardPage() {
-  const [session, setSession] = useState<BidiGenerateContentSession | null>(null);
+  
   const [isListening, setIsListening] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export default function DashboardPage() {
 
     try {
       const newSession = await createGeminiLiveSession();
-      setSession(newSession);
+      
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioContext = new AudioContext();
@@ -27,26 +27,34 @@ export default function DashboardPage() {
       source.connect(processor);
       processor.connect(audioContext.destination);
 
-      processor.onaudioprocess = (e) => {
-        const inputData = e.inputBuffer.getChannelData(0);
-        const pcmData = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          pcmData[i] = inputData[i] * 32767;
+      processor.onaudioprocess = async (e) => {
+        try {
+          const inputData = e.inputBuffer.getChannelData(0);
+          const pcmData = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            pcmData[i] = inputData[i] * 32767;
+          }
+          const result = await newSession.sendMessageStream([{ inlineData: { data: Buffer.from(pcmData.buffer).toString('base64'), mimeType: 'audio/ogg' } }]);
+          for await (const response of result.stream) {
+            if (response.text) {
+              setTranscription((prev) => prev + response.text);
+            }
+            if (response.candidates && response.candidates.length > 0) {
+              for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
+                  const audioBlob = new Blob([Buffer.from(part.inlineData.data, 'base64')], { type: part.inlineData.mimeType });
+                  const audioUrl = URL.createObjectURL(audioBlob);
+                  const audio = new Audio(audioUrl);
+                  audio.play();
+                }
+              }
+            }
+          }
+        } catch (onaudioError) {
+          console.error('Error in onaudioprocess:', onaudioError);
         }
-        newSession.send({ audio: pcmData.buffer });
       };
 
-      for await (const response of newSession.stream) {
-        if (response.text) {
-          setTranscription((prev) => prev + response.text);
-        }
-        if (response.audio) {
-          const audioBlob = new Blob([response.audio], { type: 'audio/ogg' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const audio = new Audio(audioUrl);
-          audio.play();
-        }
-      }
     } catch (err) {
       console.error('Failed to start conversation:', err);
       setError('Impossible de démarrer la conversation. Vérifiez les autorisations du microphone.');

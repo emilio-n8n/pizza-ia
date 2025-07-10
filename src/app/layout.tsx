@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
@@ -21,8 +22,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`${plusJakartaSans.variable} font-sans`}>
-        {children}
+      <body className={`${plusJakartaSans.variable} font-sans flex flex-col min-h-screen`}>
+        <main className="flex-grow">
+          {children}
+        </main>
+        <footer className="bg-gray-100 text-center lg:text-left">
+          <div className="p-4 text-center text-gray-700">
+            © {new Date().getFullYear()} Pizza AI. Tous droits réservés.
+            <Link href="/legal/terms" className="text-gray-800 hover:text-gray-600 ml-4">
+              Conditions d&apos;Utilisation
+            </Link>
+            <Link href="/legal/privacy" className="text-gray-800 hover:text-gray-600 ml-4">
+              Politique de Confidentialité
+            </Link>
+          </div>
+        </footer>
       </body>
     </html>
   );

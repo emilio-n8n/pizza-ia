@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const cookieStore = cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +12,7 @@ export async function POST() {
         async get(name: string) {
           return (await cookieStore).get(name)?.value
         },
-        async set(name: string, value: string, options: CookieOptions) {
+        async set(name: string, value: string, options) {
           try {
             (await cookieStore).set({ name, value, ...options })
           } catch {
@@ -21,7 +21,7 @@ export async function POST() {
             // user sessions.
           }
         },
-        async remove(name: string, options: CookieOptions) {
+        async remove(name: string, options) {
           try {
             (await cookieStore).set({ name, value: '', ...options })
           } catch {
@@ -40,14 +40,19 @@ export async function POST() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // TODO: Implement Gemini Live prompt/system instruction update
-    console.log("Gemini Live prompt/system instruction update to be implemented.");
+    const { pizzeria_id } = await req.json();
+    if (!pizzeria_id) {
+      return NextResponse.json({ error: 'Missing pizzeria_id in request body.' }, { status: 400 });
+    }
 
-    return NextResponse.json({ message: 'Gemini Live prompt updated successfully.' });
+    // TODO: Implement Gemini Live session configuration
+    console.log("Gemini Live session configuration to be implemented for pizzeria_id:", pizzeria_id);
+
+    return NextResponse.json({ message: 'Gemini Live session configured successfully.' });
 
   } catch (error) {
-    console.error("Error updating Gemini Live prompt:", error);
+    console.error("Error configuring Gemini Live session:", error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return NextResponse.json({ error: `Failed to update Gemini Live prompt: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ error: `Failed to configure Gemini Live session: ${errorMessage}` }, { status: 500 });
   }
 }
